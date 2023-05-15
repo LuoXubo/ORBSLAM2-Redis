@@ -78,57 +78,35 @@ ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
 ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
 )
 
-find_package(Protobuf REQUIRED)
-    if(NOT PROTOBUF_FOUND)
-        message(FATAL_ERROR "Protobuf not found")
-    endif()
-include_directories(
-    ${PROTOBUF_INCLUDE_DIR}
-    )
-
-file(GLOB PROTO_FILES ${PROJECT_SOURCE_DIR}/protobuf/poseInfo.proto)
-message("PROTO_FILES: ${PROTO_FILES}")
-foreach(proto_name ${PROTO_FILES})
-      file(RELATIVE_PATH proto_rel_name ${PROJECT_SOURCE_DIR} ${proto_name})
-      list(APPEND REL_PROTO_FILES ${proto_rel_name})
-endforeach()
-message("REL_PROTO_FILES: ${REL_PROTO_FILES}")
-
-PROTOBUF_GENERATE_CPP(PROTO_SRCS PROTO_HDRS  ${PROJECT_SOURCE_DIR}/${REL_PROTO_FILES})
-message("PROTO_SRCS: ${PROTO_SRCS}")
-message("PROTO_HDRS: ${PROTO_HDRS}")
-add_library(proto_lib STATIC ${PROTO_SRCS} ${PROTO_HDRS})
-message("PROTOBUF_INCLUDE_DIR: ${PROTOBUF_INCLUDE_DIR}")
-target_include_directories(proto_lib PUBLIC ${PROTOBUF_INCLUDE_DIR})
-target_link_libraries(proto_lib PRIVATE ${PROTOBUF_STATIC_LIBRARIES})
-
-find_package(Threads)
-find_library(HIREDIS_LIB hiredis)
-find_library(REDIS_PLUS_PLUS_LIB redis++)
-
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
-
-link_libraries(${PROTOBUF_LIBRARIES})
-
-# add_library(${PROJECT_NAME} 
-#     ${PROTO_SRCS}
-#     ${PROTO_HDRS}
-#     )
-
-target_link_libraries(
-    ${PROJECT_NAME}
-    ${PROTOBUF_LIBRARY}
-    )
-
-
-
 # Build examples
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Redis)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/RGB-D)
+
+add_executable(rgbd_tum
+Examples/RGB-D/rgbd_tum.cc)
+target_link_libraries(rgbd_tum ${PROJECT_NAME})
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Stereo)
+
+add_executable(stereo_kitti
+Examples/Stereo/stereo_kitti.cc)
+target_link_libraries(stereo_kitti ${PROJECT_NAME})
+
+add_executable(stereo_euroc
+Examples/Stereo/stereo_euroc.cc)
+target_link_libraries(stereo_euroc ${PROJECT_NAME})
+
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Monocular)
 
 add_executable(mono_tum
-Examples/Redis/mono_tum.cc)
-target_link_libraries(mono_tum ${REDIS_PLUS_PLUS_LIB} pthread ${HIREDIS_LIB})
+Examples/Monocular/mono_tum.cc)
 target_link_libraries(mono_tum ${PROJECT_NAME})
-target_link_libraries(mono_tum PUBLIC ${PROJECT_NAME} PRIVATE proto_lib)
 
+add_executable(mono_kitti
+Examples/Monocular/mono_kitti.cc)
+target_link_libraries(mono_kitti ${PROJECT_NAME})
+
+add_executable(mono_euroc
+Examples/Monocular/mono_euroc.cc)
+target_link_libraries(mono_euroc ${PROJECT_NAME})
