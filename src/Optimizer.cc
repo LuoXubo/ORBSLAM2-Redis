@@ -257,6 +257,11 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     vSE3->setFixed(false);
     optimizer.addVertex(vSE3);
 
+    // Eigen::Matrix<double,3,1> test = Converter::toVector3d(pFrame->mRwc);
+    // std::cout << test(0,0) << endl;
+
+
+
     // Set MapPoint vertices
     const int N = pFrame->N;
 

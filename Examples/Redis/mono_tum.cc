@@ -36,8 +36,27 @@
 using namespace std;
 using namespace sw::redis;
 
+typedef Eigen::Vector3d Vec3;
+typedef Eigen::Vector4d Vec4;
+typedef Eigen::Quaterniond Qua;
+
 void LoadImages(const string &strFile, vector<string> &vstrImageFilenames,
                 vector<double> &vTimestamps);
+
+void LoadAbsoluteLocation(vector<Vec3> &map_abs_xyz,
+                          vector<Qua> &map_abs_qwxyz,
+                          vector<double> &vTimestamps,
+                          vector<double> &conf);
+
+void call_back(std::string channel, std::string msg);
+
+// Redis redis("tcp://127.0.0.1:6379");
+// Redis redis1("tcp://127.0.0.1:6379");
+
+// Load xy data. 
+std::vector<Vec3> map_abs_xyz;
+std::vector<Qua> map_abs_qwxyz;
+std::vector<double> conf;
 
 int main(int argc, char **argv)
 {
@@ -50,14 +69,9 @@ int main(int argc, char **argv)
     // Retrieve paths to images
     vector<string> vstrImageFilenames;
     vector<double> vTimestamps;
-    string strFile = string(argv[3])+"/rgb.txt";
+    string strFile = string(argv[3])+"/images.txt";
     LoadImages(strFile, vstrImageFilenames, vTimestamps);
-
-    Redis redis("tcp://127.0.0.1:6379");
-    string channel = "test";
-    cout<<"Publish channel:"<<channel<<endl;
-    cout<<"Okay to publish..."<<endl;
-    
+    LoadAbsoluteLocation(map_abs_xyz, map_abs_qwxyz, vTimestamps, conf);
 
     int nImages = vstrImageFilenames.size();
 
@@ -79,19 +93,6 @@ int main(int argc, char **argv)
         // Read image from file
         im = cv::imread(string(argv[3])+"/"+vstrImageFilenames[ni],CV_LOAD_IMAGE_UNCHANGED);
         double tframe = vTimestamps[ni];
-
-        posebag::poseInfo pose;
-        pose.set_timestamp(to_string(tframe));
-        pose.set_x(0);
-        pose.set_y(0);
-        pose.set_z(0);
-        pose.set_qw(0);
-        pose.set_qx(0);
-        pose.set_qy(0);
-        pose.set_qz(0);
-        pose.set_conf(0.8);
-        string msg = pose.SerializeAsString();
-        redis.publish(channel, msg);
 
         if(im.empty())
         {
@@ -176,7 +177,70 @@ void LoadImages(const string &strFile, vector<string> &vstrImageFilenames, vecto
             ss >> sRGB;
             vstrImageFilenames.push_back(sRGB);
 
-            
+            // redis1.publish("l2g", "ok"); // 准备好接收了
+            // // cout << "OK\n";
+            // auto sub = redis.subscriber();
+            // sub.subscribe("g2l");
+            // sub.on_message(call_back);
+            // sub.consume();
+            // while(true){
+            //     try
+            //     {
+            //         sub.consume();
+            //     }
+            //     catch(const Error &err)
+            //     {
+            //         // std::cerr << e.what() << '\n';
+            //     }
+                
+            // }
         }
+    }
+}
+
+void LoadAbsoluteLocation(vector<Vec3> &map_abs_xyz,
+                          vector<Qua> &map_abs_qwxyz,
+                          vector<double> &vTimestamps,
+                          vector<double> &conf){
+
+                            Redis redis("tcp://127.0.0.1:6379");
+                            auto sub = redis.subscriber();
+                            sub.subscribe("g2l");
+                            sub.on_message(call_back);
+                            while(conf.size() != 116){
+                                try{
+                                    sub.consume();
+                                }
+                                catch (const Error &err) {
+                                    // Handle exceptions.
+                                }
+                            }
+                          }
+
+
+void call_back(std::string channel, std::string msg)
+{
+    // cout << "Hello\n";
+    if(channel == "g2l"){
+        posebag::poseInfo pos;
+        pos.ParseFromString(msg);
+        float timestamp, x, y, z, qw, qx, qy, qz, c;
+        x = pos.x();
+        y = pos.y();
+        z = pos.z();
+        qw = pos.qw();
+        qx = pos.qx();
+        qy = pos.qy();
+        qz = pos.qz();
+        // timestamp = atof(pos.timestamp());
+        c = pos.conf();
+
+        Qua quaternion(qw, qx, qy, qz);
+        // vTimestamps.push_back(timestamp);
+        map_abs_xyz.push_back(Vec3(x, y, z));
+        map_abs_qwxyz.push_back(quaternion);
+        conf.push_back(c);
+
+        cout << pos.timestamp() << endl;
     }
 }
